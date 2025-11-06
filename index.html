@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spring Boot FX Converter</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8;
+            min-height: 100vh;
+        }
+        .card {
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        }
+        .input-group label {
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center p-4">
+
+    <div class="card w-full max-w-xl bg-white p-8 md:p-10 rounded-2xl">
+        <h1 class="text-3xl font-extrabold text-gray-800 mb-6 border-b pb-3">
+            Spring Boot Currency Converter
+        </h1>
+        <p class="text-sm text-gray-500 mb-8">
+            This interface fetches real-time conversion results from your Java/Spring Boot API.
+        </p>
+
+        <!-- Conversion Form -->
+        <form id="converter-form" class="space-y-6">
+            
+            <!-- Amount Input -->
+            <div class="input-group">
+                <label for="amount" class="block text-sm text-gray-700 mb-2">Amount</label>
+                <input type="number" id="amount" value="100.00" step="0.01" min="0.01" required
+                       class="w-full p-3 border border-gray-300 rounded-xl focus:ring-blue-500 focus:border-blue-500 transition duration-150"
+                       placeholder="Enter amount">
+            </div>
+
+            <!-- Currency Selectors -->
+            <div class="grid grid-cols-2 gap-4">
+                <div class="input-group">
+                    <label for="from-currency" class="block text-sm text-gray-700 mb-2">From Currency</label>
+                    <select id="from-currency"
+                            class="w-full p-3 border border-gray-300 rounded-xl bg-white focus:ring-blue-500 focus:border-blue-500 transition duration-150">
+                        <!-- Options will be populated by JavaScript -->
+                    </select>
+                </div>
+
+                <div class="input-group">
+                    <label for="to-currency" class="block text-sm text-gray-700 mb-2">To Currency</label>
+                    <select id="to-currency"
+                            class="w-full p-3 border border-gray-300 rounded-xl bg-white focus:ring-blue-500 focus:border-blue-500 transition duration-150">
+                        <!-- Options will be populated by JavaScript -->
+                    </select>
+                </div>
+            </div>
+
+            <!-- Convert Button -->
+            <button type="submit" id="convert-button"
+                    class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition duration-200 ease-in-out shadow-lg disabled:opacity-50">
+                Convert
+            </button>
+        </form>
+
+        <!-- Result Display -->
+        <div id="result-container" class="mt-8 p-6 bg-blue-50 border-l-4 border-blue-500 rounded-xl hidden">
+            <div class="text-lg font-semibold text-gray-800 mb-2">Conversion Result:</div>
+            
+            <!-- Converted Amount -->
+            <div class="text-4xl font-extrabold text-blue-600" id="converted-amount-display"></div>
+            
+            <!-- Rate Display -->
+            <p class="text-sm text-gray-600 mt-3" id="exchange-rate-display"></p>
+        </div>
+        
+        <!-- Error/Message Box -->
+        <div id="message-box" class="mt-8 p-4 text-sm rounded-xl hidden" role="alert"></div>
+
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:8080/api/fx/convert'; // The current line
+        const form = document.getElementById('converter-form');
+        const amountInput = document.getElementById('amount');
+        const fromSelect = document.getElementById('from-currency');
+        const toSelect = document.getElementById('to-currency');
+        const convertButton = document.getElementById('convert-button');
+        const resultContainer = document.getElementById('result-container');
+        const convertedAmountDisplay = document.getElementById('converted-amount-display');
+        const exchangeRateDisplay = document.getElementById('exchange-rate-display');
+        const messageBox = document.getElementById('message-box');
+
+        // Supported currency list (based on common Frankfurter API rates)
+        const CURRENCIES = [
+            "EUR", "USD", "JPY", "GBP", "AUD", "CAD", "CHF", "CNY", 
+            "SEK", "NZD", "KRW", "SGD", "HKD", "INR", "BRL", "ZAR", "RUB"
+        ];
+
+        /**
+         * Populates the currency select dropdowns.
+         */
+        function populateCurrencies() {
+            CURRENCIES.forEach(currency => {
+                const optionFrom = new Option(currency, currency);
+                const optionTo = new Option(currency, currency);
+                
+                fromSelect.add(optionFrom);
+                toSelect.add(optionTo);
+            });
+
+            // Set initial defaults for demonstration
+            fromSelect.value = "USD";
+            toSelect.value = "EUR";
+        }
+        
+        /**
+         * Utility function to display success or error messages (replaces alert()).
+         */
+        function displayMessage(text, isError = false) {
+            messageBox.textContent = text;
+            messageBox.className = `mt-8 p-4 text-sm rounded-xl ${
+                isError ? 'bg-red-100 text-red-700 border border-red-300' : 'bg-green-100 text-green-700 border border-green-300'
+            }`;
+            messageBox.style.display = 'block';
+            resultContainer.classList.add('hidden'); // Hide results on a new message
+            
+            setTimeout(() => {
+                messageBox.style.display = 'none';
+            }, 5000);
+        }
+
+        /**
+         * Handles the form submission and calls the Spring Boot API.
+         */
+        async function handleConversion(event) {
+            event.preventDefault();
+
+            // Gather inputs
+            const amount = amountInput.value;
+            const from = fromSelect.value;
+            const to = toSelect.value;
+
+            // Simple validation
+            if (parseFloat(amount) <= 0) {
+                displayMessage("Please enter a valid amount.", true);
+                return;
+            }
+
+            // Construct API URL
+            const url = `${API_BASE_URL}?from=${from}&to=${to}&amount=${amount}`;
+
+            // Show loading state
+            convertButton.textContent = 'Converting...';
+            convertButton.disabled = true;
+            resultContainer.classList.add('hidden');
+            messageBox.style.display = 'none';
+
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+
+                if (!response.ok) {
+                    // Handle API error (e.g., RateNotFoundException returns 404)
+                    const errorText = data.message || `API returned status ${response.status}.`;
+                    displayMessage(`Error: ${errorText}`, true);
+                    return;
+                }
+
+                // SUCCESS: Display results
+                convertedAmountDisplay.textContent = `${data.convertedAmount.toFixed(2)} ${data.toCurrency}`;
+                exchangeRateDisplay.textContent = `1 ${data.fromCurrency} = ${data.exchangeRate.toFixed(6)} ${data.toCurrency}`;
+
+                resultContainer.classList.remove('hidden');
+                
+            } catch (error) {
+                // Handle network or connection errors
+                console.error("Fetch Error:", error);
+                displayMessage("Network Error: Could not connect to the Spring Boot API. Please ensure your Java application is running on port 8080.", true);
+            } finally {
+                // Reset button state
+                convertButton.textContent = 'Convert';
+                convertButton.disabled = false;
+            }
+        }
+
+        // --- Initialization ---
+
+        // 1. Populate currency dropdowns on load
+        populateCurrencies();
+
+        // 2. Attach event listener to the form
+        form.addEventListener('submit', handleConversion);
+        
+    </script>
+
+</body>
+</html>
