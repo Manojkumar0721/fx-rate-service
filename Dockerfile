@@ -1,8 +1,8 @@
 # This file tells Render exactly how to build and run your Java application.
 
 # --- Stage 1: Build the Application ---
-# Use an official Java 17 (or newer) image to build the project
-FROM eclipse-temurin:17-jdk-jammy AS build
+# Use an official Java 21 image (or newer) to build the project
+FROM eclipse-temurin:21-jdk-jammy AS build
 
 # Set the working directory inside the container
 WORKDIR /workspace/app
@@ -22,8 +22,8 @@ COPY src ./src
 RUN ./mvnw clean install -DskipTests
 
 # --- Stage 2: Create the Final Runtime Image ---
-# Use a lightweight image with only the Java Runtime (JRE) for efficiency
-FROM eclipse-temurin:17-jre-jammy
+# Use a lightweight Java 21 image for the final runtime
+FROM eclipse-temurin:21-jre-jammy
 
 # Set the working directory
 WORKDIR /app
