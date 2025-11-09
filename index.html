@@ -3,202 +3,380 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Spring Boot FX Converter</title>
+    <title>Live Currency Converter</title>
     <!-- Load Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        'primary': '#1e40af', // Blue 700
+                        'secondary': '#f97316', // Orange 500
+                        'wave-blue': '#bfdbfe', // Blue 200
+                        'wave-dark': '#1e3a8a', // Blue 800
+                    }
+                }
+            }
+        }
+    </script>
     <style>
-        /* Custom styles */
+        /* Custom Wave Gradient Background */
         body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f0f4f8;
+            background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
             min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
-        .card {
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        /* Custom Scrollbar for History */
+        #history-list::-webkit-scrollbar {
+            width: 6px;
         }
-        .input-group label {
-            font-weight: 500;
+        #history-list::-webkit-scrollbar-thumb {
+            background-color: rgba(255, 255, 255, 0.3);
+            border-radius: 3px;
+        }
+        #history-list::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.1);
+        }
+        .converter-card, .history-card {
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            backdrop-filter: blur(5px);
+            background-color: rgba(255, 255, 255, 0.95);
+        }
+        .currency-input {
+            border-color: #d1d5db; /* Gray 300 */
+        }
+        .currency-input:focus {
+            border-color: #3b82f6; /* Blue 500 */
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.5);
         }
     </style>
 </head>
-<body class="flex items-center justify-center p-4">
+<body class="p-4">
 
-    <div class="card w-full max-w-xl bg-white p-8 md:p-10 rounded-2xl">
-        <h1 class="text-3xl font-extrabold text-gray-800 mb-6 border-b pb-3">
-            Spring Boot Currency Converter
-        </h1>
-        <p class="text-sm text-gray-500 mb-8">
-            This interface fetches real-time conversion results from your Java/Spring Boot API.
+<main class="grid grid-cols-1 lg:grid-cols-2 gap-8 w-full max-w-6xl mx-auto">
+
+    <!-- Main Converter Card -->
+    <div id="converter-card" class="converter-card p-6 sm:p-8 rounded-2xl">
+        <h1 class="text-3xl font-extrabold text-gray-800 mb-6 border-b pb-3">Live FX Conversion</h1>
+        <p class="text-sm text-gray-600 mb-6">
+            Powered by Spring Boot 21 and PostgreSQL deployed on Render.
         </p>
 
-        <!-- Conversion Form -->
-        <form id="converter-form" class="space-y-6">
-            
+        <form id="conversion-form" class="space-y-6">
+
             <!-- Amount Input -->
-            <div class="input-group">
-                <label for="amount" class="block text-sm text-gray-700 mb-2">Amount</label>
-                <input type="number" id="amount" value="100.00" step="0.01" min="0.01" required
-                       class="w-full p-3 border border-gray-300 rounded-xl focus:ring-blue-500 focus:border-blue-500 transition duration-150"
-                       placeholder="Enter amount">
+            <div>
+                <label for="amount" class="block text-sm font-medium text-gray-700 mb-2">Amount</label>
+                <input type="number" id="amount" value="100.00" min="0.01" step="0.01" required
+                       class="currency-input w-full p-3 border rounded-xl transition duration-200">
             </div>
 
-            <!-- Currency Selectors -->
-            <div class="grid grid-cols-2 gap-4">
-                <div class="input-group">
-                    <label for="from-currency" class="block text-sm text-gray-700 mb-2">From Currency</label>
-                    <select id="from-currency"
-                            class="w-full p-3 border border-gray-300 rounded-xl bg-white focus:ring-blue-500 focus:border-blue-500 transition duration-150">
-                        <!-- Options will be populated by JavaScript -->
+            <div class="grid grid-cols-3 items-center gap-4">
+
+                <!-- From Currency Selector -->
+                <div>
+                    <label for="from-currency" class="block text-sm font-medium text-gray-700 mb-2">From</label>
+                    <select id="from-currency" required
+                            class="currency-input w-full p-3 border rounded-xl bg-white transition duration-200">
+                        <!-- Options populated by JS -->
                     </select>
                 </div>
 
-                <div class="input-group">
-                    <label for="to-currency" class="block text-sm text-gray-700 mb-2">To Currency</label>
-                    <select id="to-currency"
-                            class="w-full p-3 border border-gray-300 rounded-xl bg-white focus:ring-blue-500 focus:border-blue-500 transition duration-150">
-                        <!-- Options will be populated by JavaScript -->
+                <!-- Swap Button -->
+                <div class="col-span-1 flex justify-center pt-8">
+                    <button type="button" id="swap-button"
+                            class="p-2 text-primary hover:text-wave-dark transition duration-150 rounded-full hover:bg-wave-blue">
+                        <!-- Lucide-react inspired Swap SVG -->
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6"><path d="m17 4 4 4-4 4"/><path d="M21 8H3"/><path d="m7 20-4-4 4-4"/><path d="M3 16h18"/></svg>
+                    </button>
+                </div>
+
+                <!-- To Currency Selector -->
+                <div>
+                    <label for="to-currency" class="block text-sm font-medium text-gray-700 mb-2">To</label>
+                    <select id="to-currency" required
+                            class="currency-input w-full p-3 border rounded-xl bg-white transition duration-200">
+                        <!-- Options populated by JS -->
                     </select>
                 </div>
             </div>
 
             <!-- Convert Button -->
             <button type="submit" id="convert-button"
-                    class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition duration-200 ease-in-out shadow-lg disabled:opacity-50">
+                    class="w-full bg-primary hover:bg-wave-dark text-white font-bold py-3 rounded-xl transition duration-300 shadow-md hover:shadow-lg focus:outline-none focus:ring-4 focus:ring-primary focus:ring-opacity-50">
                 Convert
             </button>
         </form>
 
         <!-- Result Display -->
-        <div id="result-container" class="mt-8 p-6 bg-blue-50 border-l-4 border-blue-500 rounded-xl hidden">
-            <div class="text-lg font-semibold text-gray-800 mb-2">Conversion Result:</div>
-            
-            <!-- Converted Amount -->
-            <div class="text-4xl font-extrabold text-blue-600" id="converted-amount-display"></div>
-            
-            <!-- Rate Display -->
-            <p class="text-sm text-gray-600 mt-3" id="exchange-rate-display"></p>
+        <div id="result-display" class="mt-8 p-6 bg-wave-blue/70 rounded-xl border border-primary/20 transition-all duration-300 hidden">
+            <p class="text-xl text-gray-700 mb-1">Converted Amount:</p>
+            <p id="converted-amount" class="text-4xl font-extrabold text-primary break-all">--</p>
+            <p id="exchange-rate" class="text-sm text-gray-600 mt-2">Rate: --</p>
         </div>
-        
-        <!-- Error/Message Box -->
-        <div id="message-box" class="mt-8 p-4 text-sm rounded-xl hidden" role="alert"></div>
 
+        <!-- Loading Indicator -->
+        <div id="loading-indicator" class="mt-8 p-4 text-center text-gray-600 hidden">
+            <svg class="animate-spin h-5 w-5 text-primary mx-auto mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <p>Fetching conversion...</p>
+        </div>
+
+        <!-- Message Box -->
+        <div id="message-box" class="mt-8 p-3 text-center rounded-xl transition duration-300 hidden"></div>
     </div>
 
-    <script>
+    <!-- Conversion History Log -->
+    <div id="history-card" class="history-card p-6 sm:p-8 rounded-2xl">
+        <h2 class="text-2xl font-bold text-gray-800 mb-4 border-b pb-2 flex justify-between items-center">
+            Conversion History
+            <button type="button" id="clear-history-button"
+                    class="text-sm font-medium text-red-500 hover:text-red-700 transition duration-150 disabled:opacity-50" disabled>
+                Clear All
+            </button>
+        </h2>
+        <div id="history-list" class="space-y-3 h-96 overflow-y-auto pr-2">
+            <!-- History items will be loaded here -->
+            <p class="text-gray-500 text-center py-10" id="empty-history-message">No conversions yet.</p>
+        </div>
+    </div>
 
-        const API_BASE_URL = 'https://my-fx-api.onrender.com/api/fx/convert'; // The current line
-        const form = document.getElementById('converter-form');
-        const amountInput = document.getElementById('amount');
-        const fromSelect = document.getElementById('from-currency');
-        const toSelect = document.getElementById('to-currency');
-        const convertButton = document.getElementById('convert-button');
-        const resultContainer = document.getElementById('result-container');
-        const convertedAmountDisplay = document.getElementById('converted-amount-display');
-        const exchangeRateDisplay = document.getElementById('exchange-rate-display');
-        const messageBox = document.getElementById('message-box');
+</main>
 
-        // Supported currency list (based on common Frankfurter API rates)
-        const CURRENCIES = [
-            "EUR", "USD", "JPY", "GBP", "AUD", "CAD", "CHF", "CNY", 
-            "SEK", "NZD", "KRW", "SGD", "HKD", "INR", "BRL", "ZAR", "RUB"
-        ];
+<script>
+    // --- Configuration and Constants ---
+    // *** LIVE URL FOR DEPLOYED SPRING BOOT API ***
+    const API_BASE_URL = 'https://my-fx-api.onrender.com/api/fx/convert';
 
-        /**
-         * Populates the currency select dropdowns.
-         */
-        function populateCurrencies() {
-            CURRENCIES.forEach(currency => {
-                const optionFrom = new Option(currency, currency);
-                const optionTo = new Option(currency, currency);
-                
-                fromSelect.add(optionFrom);
-                toSelect.add(optionTo);
-            });
+    // Currencies supported by the Frankfurter API and included in your scheduled job
+    const CURRENCIES = [
+        "USD", "EUR", "GBP", "JPY", "CAD", "AUD", "CHF", "CNY", "SEK", "NZD",
+        "INR", "BRL", "ZAR", "MXN", "RUB", "SGD", "HKD", "NOK", "DKK"
+    ];
 
-            // Set initial defaults for demonstration
-            fromSelect.value = "USD";
-            toSelect.value = "EUR";
-        }
-        
-        /**
-         * Utility function to display success or error messages (replaces alert()).
-         */
-        function displayMessage(text, isError = false) {
-            messageBox.textContent = text;
-            messageBox.className = `mt-8 p-4 text-sm rounded-xl ${
-                isError ? 'bg-red-100 text-red-700 border border-red-300' : 'bg-green-100 text-green-700 border border-green-300'
-            }`;
-            messageBox.style.display = 'block';
-            resultContainer.classList.add('hidden'); // Hide results on a new message
-            
-            setTimeout(() => {
-                messageBox.style.display = 'none';
-            }, 5000);
-        }
+    // History Constants
+    const HISTORY_KEY = 'fx_conversion_history';
+    const MAX_HISTORY_ITEMS = 5; // Keep only the last 5 conversions
 
-        /**
-         * Handles the form submission and calls the Spring Boot API.
-         */
-        async function handleConversion(event) {
-            event.preventDefault();
+    // --- DOM Elements ---
+    const form = document.getElementById('conversion-form');
+    const fromSelect = document.getElementById('from-currency');
+    const toSelect = document.getElementById('to-currency');
+    const swapButton = document.getElementById('swap-button');
+    const convertedAmountEl = document.getElementById('converted-amount');
+    const exchangeRateEl = document.getElementById('exchange-rate');
+    const resultDisplay = document.getElementById('result-display');
+    const loadingIndicator = document.getElementById('loading-indicator');
+    const messageBox = document.getElementById('message-box');
+    const historyList = document.getElementById('history-list');
+    const clearHistoryButton = document.getElementById('clear-history-button');
+    const emptyHistoryMessage = document.getElementById('empty-history-message');
 
-            // Gather inputs
-            const amount = amountInput.value;
-            const from = fromSelect.value;
-            const to = toSelect.value;
+    // --- Utility Functions ---
 
-            // Simple validation
-            if (parseFloat(amount) <= 0) {
-                displayMessage("Please enter a valid amount.", true);
+    /** Populates the currency select dropdowns */
+    function populateCurrencies() {
+        CURRENCIES.forEach(currency => {
+            const optionFrom = document.createElement('option');
+            optionFrom.value = currency;
+            optionFrom.textContent = currency;
+
+            const optionTo = document.createElement('option');
+            optionTo.value = currency;
+            optionTo.textContent = currency;
+
+            fromSelect.appendChild(optionFrom);
+            toSelect.appendChild(optionTo);
+        });
+        // Set initial default selections
+        fromSelect.value = 'USD';
+        toSelect.value = 'EUR';
+    }
+
+    /** Swaps the selected 'From' and 'To' currencies */
+    function swapCurrencies() {
+        const temp = fromSelect.value;
+        fromSelect.value = toSelect.value;
+        toSelect.value = temp;
+    }
+
+    /** Shows an alert message */
+    function showMessage(text, isError = false) {
+        messageBox.textContent = text;
+        messageBox.className = `mt-8 p-3 text-center rounded-xl transition duration-300 ${
+            isError ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
+        }`;
+        messageBox.style.display = 'block';
+        setTimeout(() => {
+            messageBox.style.display = 'none';
+        }, 5000); // Keep message visible for 5 seconds
+    }
+
+    /** Renders the result and updates the UI */
+    function renderResult(data) {
+        convertedAmountEl.textContent = `${data.convertedAmount.toFixed(2)} ${data.toCurrency}`;
+        exchangeRateEl.textContent = `Rate: 1 ${data.fromCurrency} = ${data.exchangeRate.toFixed(6)} ${data.toCurrency}`;
+
+        resultDisplay.style.display = 'block';
+        resultDisplay.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    // --- History Functions ---
+
+    /** Loads and displays the conversion history from localStorage */
+    function loadHistory() {
+        try {
+            const history = JSON.parse(localStorage.getItem(HISTORY_KEY)) || [];
+            historyList.innerHTML = '';
+
+            if (history.length === 0) {
+                emptyHistoryMessage.style.display = 'block';
+                clearHistoryButton.disabled = true;
                 return;
             }
 
-            // Construct API URL
-            const url = `${API_BASE_URL}?from=${from}&to=${to}&amount=${amount}`;
+            emptyHistoryMessage.style.display = 'none';
+            clearHistoryButton.disabled = false;
 
-            // Show loading state
-            convertButton.textContent = 'Converting...';
-            convertButton.disabled = true;
-            resultContainer.classList.add('hidden');
-            messageBox.style.display = 'none';
+            // Iterate and prepend history items (newest at the top)
+            history.reverse().forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'bg-white p-3 rounded-lg border border-gray-200 text-sm shadow-sm hover:bg-gray-50 transition duration-150';
+                div.innerHTML = `
+                    <div class="font-medium text-gray-800">${item.originalAmount} ${item.fromCurrency} ➡️ ${item.convertedAmount.toFixed(2)} ${item.toCurrency}</div>
+                    <div class="text-xs text-gray-500 mt-1">Rate: ${item.exchangeRate.toFixed(6)}</div>
+                `;
+                historyList.appendChild(div);
+            });
+        } catch (error) {
+            console.error("Error loading history from localStorage:", error);
+            // Clear corrupted data if parsing fails
+            localStorage.removeItem(HISTORY_KEY);
+        }
+    }
 
-            try {
-                const response = await fetch(url);
-                const data = await response.json();
+    /** Saves a successful conversion to localStorage */
+    function saveHistory(data) {
+        try {
+            let history = JSON.parse(localStorage.getItem(HISTORY_KEY)) || [];
 
-                if (!response.ok) {
-                    // Handle API error (e.g., RateNotFoundException returns 404)
-                    const errorText = data.message || `API returned status ${response.status}.`;
-                    displayMessage(`Error: ${errorText}`, true);
-                    return;
-                }
+            // Construct the history item, ensuring BigDecimals are converted to simple numbers/strings
+            const newItem = {
+                fromCurrency: data.fromCurrency,
+                toCurrency: data.toCurrency,
+                originalAmount: parseFloat(data.originalAmount.toFixed(2)),
+                convertedAmount: parseFloat(data.convertedAmount.toFixed(2)),
+                exchangeRate: parseFloat(data.exchangeRate.toFixed(6)),
+                timestamp: new Date().toISOString()
+            };
 
-                // SUCCESS: Display results
-                convertedAmountDisplay.textContent = `${data.convertedAmount.toFixed(2)} ${data.toCurrency}`;
-                exchangeRateDisplay.textContent = `1 ${data.fromCurrency} = ${data.exchangeRate.toFixed(6)} ${data.toCurrency}`;
-
-                resultContainer.classList.remove('hidden');
-                
-            } catch (error) {
-                // Handle network or connection errors
-                console.error("Fetch Error:", error);
-                displayMessage("Network Error: Could not connect to the Spring Boot API. Please ensure your Java application is running on port 8080.", true);
-            } finally {
-                // Reset button state
-                convertButton.textContent = 'Convert';
-                convertButton.disabled = false;
+            // Add new item and ensure we don't exceed max size
+            history.push(newItem);
+            if (history.length > MAX_HISTORY_ITEMS) {
+                history = history.slice(history.length - MAX_HISTORY_ITEMS); // Keep only the newest items
             }
+
+            localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+            loadHistory(); // Refresh the display
+        } catch (error) {
+            console.error("Error saving history to localStorage:", error);
+            showMessage("Warning: Could not save conversion history.", true);
+        }
+    }
+
+    /** Clears the entire conversion history */
+    function clearHistory() {
+        // NOTE: Using window.confirm() as a custom modal replacement is allowed for this non-essential function
+        if (!window.confirm("Are you sure you want to clear your entire conversion history?")) {
+            return;
+        }
+        localStorage.removeItem(HISTORY_KEY);
+        loadHistory();
+        showMessage("Conversion history cleared!");
+    }
+
+    // --- Event Handlers ---
+
+    /** Main function to handle form submission */
+    async function handleConversion(event) {
+        event.preventDefault();
+
+        const from = fromSelect.value;
+        const to = toSelect.value;
+        const amount = parseFloat(document.getElementById('amount').value);
+
+        if (isNaN(amount) || amount <= 0) {
+            showMessage('Please enter a valid amount greater than zero.', true);
+            return;
+        }
+        if (from === to) {
+            showMessage('Please select two different currencies.', true);
+            return;
         }
 
-        // --- Initialization ---
+        loadingIndicator.style.display = 'block';
+        resultDisplay.style.display = 'none';
+        messageBox.style.display = 'none';
 
-        // 1. Populate currency dropdowns on load
+        try {
+            const url = `${API_BASE_URL}?from=${from}&to=${to}&amount=${amount}`;
+            const response = await fetch(url);
+
+            if (!response.ok) {
+                // Check for specific 404 error (Rate Not Found)
+                if (response.status === 404) {
+                    const errorBody = await response.json();
+                    throw new Error(`Rate Not Found: ${errorBody.message || 'The required exchange rate is not available in the database.'}`);
+                }
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+
+            const data = await response.json();
+
+            renderResult(data);
+            saveHistory(data); // Save successful conversion
+            showMessage('Conversion successful!');
+
+        } catch (error) {
+            console.error('Conversion failed:', error);
+            let errorMessage = 'An unknown error occurred. Check your API link and logs.';
+
+            if (error.message.includes('Failed to fetch')) {
+                errorMessage = 'Could not connect to the backend API. Check if the Render service is running.';
+            } else if (error.message.includes('Rate Not Found')) {
+                errorMessage = `Conversion failed: ${error.message}`;
+            } else {
+                errorMessage = `API Error: ${error.message}`;
+            }
+
+            showMessage(errorMessage, true);
+            resultDisplay.style.display = 'none'; // Hide any old results
+        } finally {
+            loadingIndicator.style.display = 'none';
+        }
+    }
+
+    // --- Initialization ---
+
+    // 1. Setup the UI on page load
+    document.addEventListener('DOMContentLoaded', () => {
         populateCurrencies();
+        loadHistory(); // Load and display existing history
+    });
 
-        // 2. Attach event listener to the form
-        form.addEventListener('submit', handleConversion);
-        
-    </script>
+    // 2. Attach main event listeners
+    form.addEventListener('submit', handleConversion);
+    swapButton.addEventListener('click', swapCurrencies);
+    clearHistoryButton.addEventListener('click', clearHistory);
+</script>
 
 </body>
 </html>
